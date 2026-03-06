@@ -1,6 +1,5 @@
 import { useFormContext } from 'react-hook-form';
 import {
-  User,
   MapPin,
   Store,
   ChevronDown,
@@ -8,13 +7,13 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { FormField } from '@/components/ui/FormField';
-import { cn, formatPHMobile } from '@/lib/utils';
+import { cn, formatPHMobile, formatTimeSlot } from '@/lib/utils';
 import type { OrderSchema } from '@/lib/schemas';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { customersApi } from '@/lib/api';
-import { DeliveryType } from '@/types';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { customersApi, typesApi,  } from '@/lib/api';
 import { useEffect } from 'react';
+import { TypeOption } from '@/types';
 
 // ── PH Barangay data (replace with your full dataset or API call) ─────────────
 const SAMPLE_BARANGAYS = [
@@ -128,10 +127,27 @@ export default function CustomerSection() {
       : undefined;
   }
 
+  const types = ['delivery-times', 'pickup-times'] as const;
+  const typeQueries = useQueries({
+    queries: types.map((slug) => ({
+      queryKey: ["slug", slug],
+      queryFn: () => typesApi.getTypes(slug)
+    }))
+  });
+  
+  const [deliveryTimesQuery, pickupTimesQuery] = typeQueries;
+
+  const deliveryTimeTypes: TypeOption[] = deliveryTimesQuery.data
+    ? deliveryTimesQuery.data.map(dt => ({ ...dt, text: formatTimeSlot(dt) }))
+    : [];
+
+  const pickupTimeTypes: TypeOption[] = pickupTimesQuery.data
+    ? pickupTimesQuery.data.map(dt => ({ ...dt, text: formatTimeSlot(dt) }))
+    : [];
+
   const contactId = searchParams.get('contactId') || '';
   
-  // If customer_id is present in URL, you can fetch and populate customer data here
-  const { data: customer, isLoading } = useQuery({
+  const { data: customer, isLoading: isCustomerLoading } = useQuery({
     queryKey: ['customer', contactId],
     queryFn: () => customersApi.getByContactId(contactId),
     enabled: !!contactId,
@@ -149,15 +165,15 @@ export default function CustomerSection() {
       barangay: customer.barangay ?? '',
       city: customer.city ?? '',
       landmark: customer.landmark ?? '',
-      delivery_time: customer.preferredDeliveryTime ?? '',
+      delivery_time: '',
       pickup_time: customer.preferredPickupTime ?? '',
       pickup_notes: customer.pickupNotes ?? '',
     }, { shouldValidate: true });
 
-  }, [customer, setValue]);
+  }, [customer]);
 
   
-  if (isLoading) {
+  if (isCustomerLoading) {
     return (
       <div className="flex justify-center py-20">
         <span className="text-slate-400">Loading customer data...</span>
@@ -274,14 +290,6 @@ export default function CustomerSection() {
               />
             </FormField>
 
-            {/* <FormField>
-              <input
-                className="input"
-                placeholder="Province"
-                {...register('customer.province')}
-              />
-            </FormField> */}
-
             <FormField>
               <input
                 className="input"
@@ -290,10 +298,15 @@ export default function CustomerSection() {
               />
             </FormField>
 
-            {/* Pick up time */}
+            {/* Delivery time */}
             <FormField>
               <select className="input" {...register('customer.delivery_time')}>
                 <option value="">-- Choose delivery time --</option>
+                {deliveryTimeTypes.map((time) => (
+                  <option key={time.id} value={time.id}>
+                    {time.text}
+                  </option>
+                ))}
               </select>
             </FormField>
           </div>
@@ -308,12 +321,14 @@ export default function CustomerSection() {
           <div className="px-5 py-4 space-y-3">
             {/* Pick up time */}
             <FormField>
-              <input
-                className="input"
-                type="time"
-                placeholder="Pick up time"
-                {...register('customer.pickup_time')}
-              />
+              <select className="input" {...register('customer.pickup_time')}>
+                <option value="">-- Choose pickup time --</option>
+                {pickupTimeTypes.map((time) => (
+                  <option key={time.id} value={time.id}>
+                    {time.text}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             {/* Notes for pick up */}

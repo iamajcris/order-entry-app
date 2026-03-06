@@ -156,3 +156,22 @@ export interface Menu {
   store: string
   menuItems: MenuItem[]
 }
+
+export interface TypeOption {
+  id: string
+  text: string
+  ext: Record<string, any>
+}
+
+// ─────────────────────────────────────────
+//  API Response Types
+// ─────────────────────────────────────────
+
+export interface ApiErrorResponse {
+  message?: string
+  error?: string
+}
+
+// ─────────────────────────────────────────
+//  Other Types
+// ─────────────────────────────────────────  

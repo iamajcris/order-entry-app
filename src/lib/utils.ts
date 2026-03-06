@@ -1,3 +1,4 @@
+import { TypeOption } from '@/types'
 import { clsx, type ClassValue } from 'clsx'
 
 /** Merge class names */
@@ -81,3 +82,15 @@ export function formatPHMobile(value: string) {
     }
   );
 };
+
+export function formatTimeSlot(type: TypeOption): string {
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    let h = hours % 12 || 12;
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    const m = String(minutes).padStart(2, '0');
+    return `${h}:${m}${ampm}`;
+  };
+
+  return `${formatTime(type.ext.start)} - ${formatTime(type.ext.end)}`;
+}

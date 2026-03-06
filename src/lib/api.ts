@@ -90,3 +90,8 @@ export const menuApi = {
   getLatestMenu: (): Promise<Menu> =>
     apiClient.get('/menu/latest'),
 }
+
+export const typesApi = {
+  getTypes: (slug: string): Promise<{ id: string; text: string, ext: {} }[]> =>
+    apiClient.get(`/types/${slug}`), 
+}

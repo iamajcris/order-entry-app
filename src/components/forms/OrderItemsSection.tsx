@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useFieldArray, useFormContext } from 'react-hook-form'
 import { Plus, Minus } from 'lucide-react'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils'
 import { MENU_ITEMS, CATEGORIES, CATEGORY_COLORS } from '@/data/menuItems'
 import type { OrderSchema } from '@/lib/schemas'
 import type { MenuItem } from '@/data/menuItems'
+import { menuApi } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
 
 // ── Category emoji map ────────────────────────────────────────────────────────
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -121,8 +123,9 @@ function MenuItemCard({ item, quantity, onAdd, onIncrement, onDecrement }: MenuI
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function OrderItemsSection() {
-  const [activeCategory, setActiveCategory] = useState<string>('All')
-
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  
   const {
     register,
     control,
@@ -133,7 +136,6 @@ export default function OrderItemsSection() {
   const { fields, append, remove, update } = useFieldArray({ control, name: 'items' })
   const watchedItems = watch('items')
   const { subtotal, total } = useOrderTotals(watchedItems)
-  const timeOptions = generateTimeOptions()
 
   // ── helpers ──────────────────────────────────────────────────────────────
   function getFieldIndex(menuItem: MenuItem): number {
@@ -180,12 +182,31 @@ export default function OrderItemsSection() {
     }
   }
 
+  const { data: latestMenu, isLoading } = useQuery({
+    queryKey: ['menu'],
+    queryFn: () => menuApi.getLatestMenu(),
+  });
+
+  useEffect(() => {
+    if (latestMenu?.menuItems) {
+      setMenuItems(latestMenu.menuItems);
+    }
+  }, [latestMenu]); 
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <span className="text-slate-400">Loading menu...</span>
+      </div>
+    );
+  }
+  
   // Total items added (for badge)
   const totalItemCount = watchedItems?.reduce((sum, i) => sum + (Number(i?.quantity) || 0), 0) ?? 0
 
   const filteredItems = activeCategory === 'All'
-    ? MENU_ITEMS
-    : MENU_ITEMS.filter(i => i.category === activeCategory)
+    ? menuItems
+    : menuItems.filter(i => i.category === activeCategory)
 
   return (
     <Card>
