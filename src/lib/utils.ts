@@ -94,3 +94,16 @@ export function formatTimeSlot(type: TypeOption): string {
 
   return `${formatTime(type.ext.start)} - ${formatTime(type.ext.end)}`;
 }
+
+/** Check if a time slot is still available (end time hasn't passed current time) */
+export function isTimeSlotAvailable(type: TypeOption): boolean {
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+
+  const [endHours, endMinutes] = type.ext.end.split(':').map(Number);
+  const endTimeInMinutes = endHours * 60 + endMinutes;
+
+  return endTimeInMinutes > currentTimeInMinutes;
+}

@@ -13,10 +13,10 @@ interface PaymentOption {
 }
 
 const PAYMENT_METHODS: PaymentOption[] = [
-  { value: 'cash', label: 'Cash' },
   { value: 'gcash', label: 'GCash' },
-  { value: 'card', label: 'Card' },
+  { value: 'maya', label: 'Maya' },
   { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'cash', label: 'Cash' },
 ]
 
 interface PaymentSectionProps {
@@ -31,22 +31,23 @@ export default function PaymentSection({ isSubmitting }: PaymentSectionProps) {
   } = useFormContext<OrderSchema>()
 
   const watchedItems = watch('items')
-  const amountTendered = watch('payment.amount_tendered')
-  const { total, change } = useOrderTotals(watchedItems, amountTendered)
+  // const amountTendered = watch('payment.amount_tendered')
+  // const { total, change } = useOrderTotals(watchedItems, amountTendered)
 
   return (
     <Card>
-      <CardHeader title="Payment details" />
+      <CardHeader title="Payment" />
 
       <CardBody className="space-y-4">
         {/* Method + Amount row */}
-        <div className="flex gap-3 items-end">
+        <div className="flex flex-col gap-1">
           {/* Method dropdown */}
-          <div className="relative w-36">
+          <div className="relative w-auto">
             <select
-              className="input appearance-none pr-8 font-medium"
+              className="input appearance-none font-medium"
               {...register('payment.method')}
             >
+              <option value="">-- Choose payment option --</option>
               {PAYMENT_METHODS.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
@@ -58,35 +59,10 @@ export default function PaymentSection({ isSubmitting }: PaymentSectionProps) {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
           </div>
-
-          {/* Amount tendered */}
-          <div className="flex-1">
-            <div className="flex">
-              <span className="inline-flex items-center px-3 bg-slate-50 border border-r-0 border-slate-200 rounded-l-md text-slate-500 text-sm">
-                ₱
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className={cn(
-                  'input rounded-l-none',
-                  errors?.payment?.amount_tendered && 'input-error'
-                )}
-                placeholder="0"
-                {...register('payment.amount_tendered', { valueAsNumber: true })}
-              />
-            </div>
-            {errors?.payment?.amount_tendered && (
-              <p className="text-xs text-red-500 mt-0.5">
-                {errors.payment.amount_tendered.message}
-              </p>
-            )}
-          </div>
         </div>
 
         {/* Change */}
-        <div className="flex justify-between items-center py-2 border-t border-slate-100">
+        {/* <div className="flex justify-between items-center py-2 border-t border-slate-100">
           <span className="text-sm text-slate-500">Change</span>
           <span
             className={cn(
@@ -96,7 +72,7 @@ export default function PaymentSection({ isSubmitting }: PaymentSectionProps) {
           >
             {formatPeso(change)}
           </span>
-        </div>
+        </div> */}
 
         {/* Submit */}
         <button

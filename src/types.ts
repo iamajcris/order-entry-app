@@ -31,7 +31,7 @@ export interface OrderItem {
   line_total: number
 }
 
-export type PaymentMethod = 'cash' | 'gcash' | 'card' | 'bank_transfer'
+export type PaymentMethod = 'gcash' | 'maya' | 'bank_transfer' | 'cash'
 
 export interface Order {
   id: number
@@ -74,7 +74,7 @@ export interface CustomerFormValues {
   first_name: string
   last_name: string
   mobile: string
-  delivery_type: DeliveryType
+  delivery_type: string
   // Address
   street: string
   barangay: string
@@ -114,7 +114,7 @@ export interface CreateCustomerPayload {
   first_name: string
   last_name: string
   mobile: string
-  delivery_type: DeliveryType
+  delivery_type: string
   street: string
   barangay: string
   city: string
@@ -137,7 +137,6 @@ export interface CreateOrderPayload {
   notes: string
   items: CreateOrderItemPayload[]
   payment_method: PaymentMethod
-  amount_tendered: number
   print_receipt: boolean
 }
 

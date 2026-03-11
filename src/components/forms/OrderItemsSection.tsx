@@ -211,7 +211,7 @@ export default function OrderItemsSection() {
   return (
     <Card>
       <CardHeader
-        title="Order Details"
+        title="Menu"
         actions={
           totalItemCount > 0 ? (
             <span className="text-xs font-semibold bg-brand-600 text-white px-2 py-0.5 rounded-full">
@@ -222,38 +222,6 @@ export default function OrderItemsSection() {
       />
 
       <CardBody className="space-y-5">
-
-        {/* Date / Time / Notes */}
-        {/* <div className="grid grid-cols-3 gap-4">
-          <FormField label="Order Date" error={errors?.order_date?.message}>
-            <input
-              type="date"
-              className={cn('input', errors?.order_date && 'input-error')}
-              {...register('order_date')}
-            />
-          </FormField>
-          <FormField label="Time">
-            <select className="input" {...register('order_time')}>
-              <option value="">-- Select time --</option>
-              {timeOptions.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </FormField>
-          <FormField label="Notes">
-            <input
-              className="input"
-              placeholder="Optional notes…"
-              {...register('notes')}
-            />
-          </FormField>
-        </div> */}
-
-        {/* Array-level validation error */}
-        {/* {typeof errors?.items?.message === 'string' && (
-          <p className="text-xs text-red-500 -mt-2">{errors.items.message}</p>
-        )} */}
-
         {/* ── Menu section ────────────────────────────────────────── */}
         <div className="-mx-4 -mb-4">
 
@@ -309,20 +277,6 @@ export default function OrderItemsSection() {
         </div>
 
       </CardBody>
-
-      {/* Summary — sticky at bottom of card */}
-      {totalItemCount > 0 && (
-        <div className="border-t border-slate-200 px-5 py-4 space-y-1 bg-slate-50">
-          <div className="flex justify-between text-sm text-slate-500">
-            <span>Sub Total</span>
-            <span className="font-mono">{formatPeso(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm font-semibold text-slate-800">
-            <span>Total</span>
-            <span className="font-mono">{formatPeso(total)}</span>
-          </div>
-        </div>
-      )}
     </Card>
   )
 }

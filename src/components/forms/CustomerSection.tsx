@@ -7,30 +7,14 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { FormField } from '@/components/ui/FormField';
-import { cn, formatPHMobile, formatTimeSlot } from '@/lib/utils';
+import { cn, formatPHMobile, formatTimeSlot, isTimeSlotAvailable } from '@/lib/utils';
 import type { OrderSchema } from '@/lib/schemas';
 import { useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { customersApi, typesApi,  } from '@/lib/api';
 import { useEffect } from 'react';
 import { TypeOption } from '@/types';
-
-// ── PH Barangay data (replace with your full dataset or API call) ─────────────
-const SAMPLE_BARANGAYS = [
-  'Barangay 1',
-  'Barangay 2',
-  'Barangay 3',
-  'Barangay 4',
-  'Barangay 5',
-  'Poblacion',
-  'Bagong Silang',
-  'Batasan Hills',
-  'Commonwealth',
-  'Fairview',
-  'Holy Spirit',
-  'Payatas',
-  'Sauyo',
-];
+import { locationApi } from '@/lib/locationApi';
 
 // ── Section divider ───────────────────────────────────────────────────────────
 function SectionDivider({
@@ -52,7 +36,7 @@ function SectionDivider({
 
 // ── Delivery Type Toggle (GrabFood-style) ─────────────────────────────────────
 interface DeliveryToggleProps {
-  value: 'delivery' | 'pick_up';
+  value: 'delivery' | 'pick_up' | string;
   onChange: (v: 'delivery' | 'pick_up') => void;
 }
 
@@ -113,12 +97,25 @@ export default function CustomerSection() {
     watch,
     setValue,
     formState: { errors },
+    clearErrors,
   } = useFormContext<OrderSchema>();
 
   const deliveryType = watch('customer.delivery_type');
   const isDelivery = deliveryType === 'delivery';
+  const cityCode = watch('customer.cityCode');
 
   const customerErrors = errors?.customer ?? {};
+
+  // reset/remove time values when delivery type toggles
+  useEffect(() => {
+    if (deliveryType === 'delivery') {
+      setValue('customer.pickup_time', '', { shouldValidate: false });
+      clearErrors('customer.pickup_time');
+    } else {
+      setValue('customer.delivery_time', '', { shouldValidate: false });
+      clearErrors('customer.delivery_time');
+    }
+  }, [deliveryType, setValue, clearErrors]);
 
   function fieldError(field: keyof typeof customerErrors) {
     const err = customerErrors[field];
@@ -138,12 +135,30 @@ export default function CustomerSection() {
   const [deliveryTimesQuery, pickupTimesQuery] = typeQueries;
 
   const deliveryTimeTypes: TypeOption[] = deliveryTimesQuery.data
-    ? deliveryTimesQuery.data.map(dt => ({ ...dt, text: formatTimeSlot(dt) }))
+    ? deliveryTimesQuery.data
+        // .filter(dt => isTimeSlotAvailable(dt)) TODO: re-enable filtering once we have more time slots in the system and need to hide unavailable ones
+        .map(dt => ({ ...dt, text: formatTimeSlot(dt) }))
     : [];
 
   const pickupTimeTypes: TypeOption[] = pickupTimesQuery.data
-    ? pickupTimesQuery.data.map(dt => ({ ...dt, text: formatTimeSlot(dt) }))
+    ? pickupTimesQuery.data
+        // .filter(dt => isTimeSlotAvailable(dt)) TODO: re-enable filtering once we have more time slots in the system and need to hide unavailable ones
+        .map(dt => ({ ...dt, text: formatTimeSlot(dt) }))
     : [];
+  
+  const { data: cities } = useQuery({
+    queryKey: ['locations', 'cities'],
+    queryFn: () => locationApi.getCitiesMunicipalities('0400000000', '0402100000'),
+    staleTime: Infinity,
+    gcTime: Infinity
+  });
+
+  const { data: barangays } = useQuery({
+    queryKey: ['locations', 'barangays', cityCode],
+    queryFn: () => locationApi.getBarangays('0400000000', '0402100000', cityCode),
+    staleTime: Infinity,
+    enabled: !!cityCode,
+  });
 
   const contactId = searchParams.get('contactId') || '';
   
@@ -156,23 +171,23 @@ export default function CustomerSection() {
   useEffect(() => {
     if (!customer) return;
 
-    setValue('customer', {
-      first_name: customer.firstName,
-      last_name: customer.lastName,
-      mobile: formatPHMobile(customer.mobileNumber),
-      delivery_type: customer.deliveryType ?? 'delivery',
-      street: customer.street ?? '',
-      barangay: customer.barangay ?? '',
-      city: customer.city ?? '',
-      landmark: customer.landmark ?? '',
-      delivery_time: '',
-      pickup_time: customer.preferredPickupTime ?? '',
-      pickup_notes: customer.pickupNotes ?? '',
-    }, { shouldValidate: true });
+    setValue('customer.first_name', customer.firstName, { shouldValidate: true });
+    setValue('customer.last_name', customer.lastName, { shouldValidate: true });
+    setValue('customer.mobile', formatPHMobile(customer.mobileNumber), { shouldValidate: true });
+    setValue('customer.delivery_type', customer.deliveryType ?? 'delivery', { shouldValidate: true });
 
+    setValue('customer.street', customer.street ?? '', { shouldValidate: true });
+    setValue('customer.barangay', customer.barangay ?? '', { shouldValidate: true });
+    setValue('customer.city', customer.city ?? '', { shouldValidate: true });
+    // setValue('customer.cityCode', customer.cityCode ?? '0402109000', { shouldValidate: true });
+
+    setValue('customer.landmark', customer.landmark ?? '', { shouldValidate: true });
+
+    setValue('customer.delivery_time', '', { shouldValidate: true });
+    setValue('customer.pickup_time', customer.preferredPickupTime ?? '', { shouldValidate: true });
+    setValue('customer.pickup_notes', customer.pickupNotes ?? '', { shouldValidate: true });
   }, [customer]);
 
-  
   if (isCustomerLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -225,8 +240,10 @@ export default function CustomerSection() {
               {...register('customer.mobile')}
               onChange={(e) => {
                 const formatted = formatPHMobile(e.target.value);
-                
-                setValue('customer.mobile', formatted, { shouldValidate: false });
+
+                setValue('customer.mobile', formatted, {
+                  shouldValidate: false,
+                });
               }}
             />
           </div>
@@ -252,24 +269,66 @@ export default function CustomerSection() {
           />
 
           <div className="px-5 py-4 space-y-3">
-            <FormField>
+            <FormField error={fieldError('street')}>
               <input
-                className="input"
+                className={cn('input', fieldError('street') && 'input-error')}
                 placeholder="House / Block & Lot / Street"
                 {...register('customer.street')}
               />
             </FormField>
 
-            <FormField>
+            <FormField error={fieldError('barangayCode')}>
               <div className="relative">
                 <select
-                  className="input appearance-none pr-8"
-                  {...register('customer.barangay')}
+                  className={cn(
+                    'input appearance-none pr-8',
+                    fieldError('barangayCode') && 'input-error',
+                  )}
+                  {...register('customer.barangayCode')}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const type = barangays?.find((c) => c.id === id);
+
+                    setValue('customer.barangay', type?.text || '', {
+                      shouldValidate: true,
+                    });
+                  }}
                 >
                   <option value="">Barangay</option>
-                  {SAMPLE_BARANGAYS.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
+                  {barangays?.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.text}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            </FormField>
+
+            <FormField error={fieldError('cityCode')}>
+              <div className="relative">
+                <select
+                  {...register('customer.cityCode')}
+                  className={cn(
+                    'input appearance-none pr-8',
+                    fieldError('cityCode') && 'input-error',
+                  )}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const type = cities?.find((c) => c.id === id);
+
+                    setValue('customer.city', type?.text || '', {
+                      shouldValidate: true,
+                    });
+                  }}
+                >
+                  <option value="">City / Municipality</option>
+                  {cities?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.text}
                     </option>
                   ))}
                 </select>
@@ -283,31 +342,33 @@ export default function CustomerSection() {
             <FormField>
               <input
                 className="input"
-                placeholder="City / Municipality"
-                value="Imus City"
-                readOnly
-                {...register('customer.city')}
-              />
-            </FormField>
-
-            <FormField>
-              <input
-                className="input"
                 placeholder="Landmark / Instructions"
                 {...register('customer.landmark')}
               />
             </FormField>
 
             {/* Delivery time */}
-            <FormField>
-              <select className="input" {...register('customer.delivery_time')}>
-                <option value="">-- Choose delivery time --</option>
-                {deliveryTimeTypes.map((time) => (
-                  <option key={time.id} value={time.id}>
-                    {time.text}
-                  </option>
-                ))}
-              </select>
+            <FormField error={fieldError('delivery_time')}>
+              <div className="relative">
+                <select
+                  className={cn(
+                    'input appearance-none pr-8',
+                    fieldError('delivery_time') && 'input-error',
+                  )}
+                  {...register('customer.delivery_time')}
+                >
+                  <option value="">-- Choose delivery time --</option>
+                  {deliveryTimeTypes.map((time) => (
+                    <option key={time.id} value={time.id}>
+                      {time.text}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
             </FormField>
           </div>
         </>
@@ -320,8 +381,14 @@ export default function CustomerSection() {
 
           <div className="px-5 py-4 space-y-3">
             {/* Pick up time */}
-            <FormField>
-              <select className="input" {...register('customer.pickup_time')}>
+            <FormField error={fieldError('pickup_time')}>
+              <select
+                className={cn(
+                  'input',
+                  fieldError('pickup_time') && 'input-error',
+                )}
+                {...register('customer.pickup_time')}
+              >
                 <option value="">-- Choose pickup time --</option>
                 {pickupTimeTypes.map((time) => (
                   <option key={time.id} value={time.id}>

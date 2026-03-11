@@ -31,7 +31,7 @@ export default function OrderSummary() {
   return (
     <Card>
       <CardHeader
-        title="Order Summary"
+        title="Summary"
         actions={
           hasItems ? (
             <span className="text-xs font-semibold bg-brand-600 text-white px-2 py-0.5 rounded-full">

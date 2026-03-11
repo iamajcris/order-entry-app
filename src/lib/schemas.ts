@@ -22,15 +22,33 @@ export const customerSchema = z.object({
   delivery_type: z
     .string()
     .optional()
-    .default(DeliveryType.DELIVERY),
-  street: z.string().optional().default(''),
-  barangay: z.string().optional().default(''),
-  city: z.string().optional().default(''),
+    .default('delivery'),
+  street: z.string().min(1, 'Street is required').default(''),
+  barangay: z.string().default(''),
+  barangayCode: z.string().min(1, 'Barangay is required').default(''),
+  city: z.string().default(''),
+  cityCode: z.string().min(1, 'City is required').default(''),
   landmark: z.string().optional().default(''),
   pickup_time: z.string().optional().default(''),
   pickup_notes: z.string().optional().default(''),
   delivery_time: z.string().optional().default(''),
 })
+.superRefine((customer, ctx) => {
+  if (customer.delivery_type === 'delivery' && !customer.delivery_time) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['delivery_time'],
+      message: 'Delivery time is required',
+    });
+  }
+  if (customer.delivery_type === 'pick_up' && !customer.pickup_time) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['pickup_time'],
+      message: 'Pickup time is required',
+    });
+  }
+});
 
 export const orderItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
@@ -44,12 +62,8 @@ export const orderItemSchema = z.object({
 
 export const paymentSchema = z.object({
   method: z
-    .enum(['cash', 'gcash', 'card', 'bank_transfer'])
+    .enum(['gcash', 'maya', 'bank_transfer', 'cash'])
     .default('cash'),
-  amount_tendered: z
-    .number({ invalid_type_error: 'Enter amount' })
-    .min(0, 'Must be 0 or more')
-    .default(0),
 })
 
 export const orderSchema = z.object({
